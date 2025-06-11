@@ -10,6 +10,8 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
+from fastapi.staticfiles import StaticFiles
+from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
 from starlette.routing import Mount
@@ -143,6 +145,7 @@ async def run(
     port: int = 8000,
     api_key: Optional[str] = "",
     cors_allow_origins=["*"],
+    use_cdn: bool = True,
     **kwargs,
 ):
     # Server API Key
@@ -194,6 +197,9 @@ async def run(
         ssl_certfile=ssl_certfile,
         ssl_keyfile=ssl_keyfile,
         lifespan=lifespan,
+        docs_url="/docs" if use_cdn else None,
+        redoc_url="/redoc" if use_cdn else None,
+        swagger_ui_init_oauth=None,
     )
 
     main_app.add_middleware(
@@ -203,6 +209,35 @@ async def run(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    if not use_cdn:
+        static_dir = os.path.join(os.path.dirname(__file__), "static", "swagger")
+        main_app.mount(
+            "/static/swagger",
+            StaticFiles(directory=static_dir),
+            name="swagger-static",
+        )
+
+        @main_app.get("/docs", include_in_schema=False)
+        async def custom_swagger_ui():
+            return get_swagger_ui_html(
+                openapi_url=main_app.openapi_url,
+                title=main_app.title + " - Swagger UI",
+                swagger_js_url="/static/swagger/swagger-ui-bundle.js",
+                swagger_css_url="/static/swagger/swagger-ui.css",
+                swagger_favicon_url="/static/swagger/favicon.png",
+                oauth2_redirect_url=None,
+                init_oauth=None,
+            )
+
+        @main_app.get("/redoc", include_in_schema=False)
+        async def custom_redoc_ui():
+            return get_redoc_html(
+                openapi_url=main_app.openapi_url,
+                title=main_app.title + " - ReDoc",
+                redoc_js_url="/static/swagger/redoc.standalone.js",
+                with_google_fonts=False,
+            )
 
     # Add middleware to protect also documentation and spec
     if api_key and strict_auth:
@@ -281,6 +316,9 @@ async def run(
                 description=f"{server_name} MCP Server\n\n- [back to tool list](/docs)",
                 version="1.0",
                 lifespan=lifespan,
+                docs_url="/docs" if use_cdn else None,
+                redoc_url="/redoc" if use_cdn else None,
+                swagger_ui_init_oauth=None,
             )
 
             sub_app.add_middleware(
@@ -290,6 +328,35 @@ async def run(
                 allow_methods=["*"],
                 allow_headers=["*"],
             )
+
+            if not use_cdn:
+                static_dir = os.path.join(os.path.dirname(__file__), "static", "swagger")
+                sub_app.mount(
+                    "/static/swagger",
+                    StaticFiles(directory=static_dir),
+                    name="swagger-static",
+                )
+
+                @sub_app.get("/docs", include_in_schema=False)
+                async def custom_swagger_ui_sub():
+                    return get_swagger_ui_html(
+                        openapi_url=sub_app.openapi_url,
+                        title=sub_app.title + " - Swagger UI",
+                        swagger_js_url="/static/swagger/swagger-ui-bundle.js",
+                        swagger_css_url="/static/swagger/swagger-ui.css",
+                        swagger_favicon_url="/static/swagger/favicon.png",
+                        oauth2_redirect_url=None,
+                        init_oauth=None,
+                    )
+
+                @sub_app.get("/redoc", include_in_schema=False)
+                async def custom_redoc_ui_sub():
+                    return get_redoc_html(
+                        openapi_url=sub_app.openapi_url,
+                        title=sub_app.title + " - ReDoc",
+                        redoc_js_url="/static/swagger/redoc.standalone.js",
+                        with_google_fonts=False,
+                    )
 
             if server_cfg.get("command"):
                 # stdio
