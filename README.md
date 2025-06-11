@@ -52,6 +52,17 @@ To use a Streamable HTTP-compatible MCP server, specify the server type and endp
 mcpo --port 8000 --api-key "top-secret" --server-type "streamable_http" -- http://127.0.0.1:8002/mcp
 ```
 
+### 📦 Offline Mode
+
+If your environment doesn't have internet access, run `mcpo` with `--no-cdn` to
+use bundled Swagger UI assets:
+
+```bash
+mcpo --no-cdn --port 8000 -- your_mcp_server_command
+```
+
+The documentation UIs will load from the local `static/swagger` directory.
+
 You can also run mcpo via Docker with no installation:
 
 ```bash
