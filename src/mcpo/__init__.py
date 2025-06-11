@@ -22,6 +22,13 @@ def main(
         Optional[List[str]],
         typer.Option("--cors-allow-origins", help="CORS allowed origins"),
     ] = ["*"],
+    use_cdn: Annotated[
+        Optional[bool],
+        typer.Option(
+            "--use-cdn/--no-cdn",
+            help="Load Swagger UI assets from CDN (default True)",
+        ),
+    ] = True,
     api_key: Annotated[
         Optional[str],
         typer.Option("--api-key", "-k", help="API key for authentication"),
@@ -131,6 +138,7 @@ def main(
             ssl_certfile=ssl_certfile,
             ssl_keyfile=ssl_keyfile,
             path_prefix=path_prefix,
+            use_cdn=use_cdn,
         )
     )
 
